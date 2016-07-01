@@ -46,8 +46,6 @@ namespace TeamCityIntegration
         }
     }
 
-
-
     [Export(typeof(IBuildServerAdapter))]
     [TeamCityIntegrationMetadata("TeamCity")]
     [PartCreationPolicy(CreationPolicy.NonShared)]
@@ -65,6 +63,8 @@ namespace TeamCityIntegration
 
         private Regex BuildIdFilter { get; set; }
 
+        public string LogAsGuestUrlParameter { get; set; }
+
         public void Initialize(IBuildServerWatcher buildServerWatcher, ISettingsSource config)
         {
             if (this.buildServerWatcher != null)
@@ -73,8 +73,16 @@ namespace TeamCityIntegration
             this.buildServerWatcher = buildServerWatcher;
 
             ProjectNames = config.GetString("ProjectName", "").Split(new char[]{'|'}, StringSplitOptions.RemoveEmptyEntries);
-            BuildIdFilter = new Regex(config.GetString("BuildIdFilter", ""), RegexOptions.Compiled);
+
+            var buildIdFilerSetting = config.GetString("BuildIdFilter", "");
+            if (!BuildServerSettingsHelper.IsRegexValid(buildIdFilerSetting))
+            {
+                return;
+            }
+            BuildIdFilter = new Regex(buildIdFilerSetting, RegexOptions.Compiled);
             var hostName = config.GetString("BuildServerUrl", null);
+            LogAsGuestUrlParameter = config.GetBool("LogAsGuest", false) ? "&guest=1" : string.Empty;
+
             if (!string.IsNullOrEmpty(hostName))
             {
                 httpClient = new HttpClient
@@ -102,7 +110,6 @@ namespace TeamCityIntegration
                                    select element.Attribute("id").Value,
                            TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.AttachedToParent));
                     }
-
                 }
             }
         }
@@ -252,14 +259,14 @@ namespace TeamCityIntegration
             return false;
         }
 
-        private static BuildInfo CreateBuildInfo(XDocument buildXmlDocument)
+        private BuildInfo CreateBuildInfo(XDocument buildXmlDocument)
         {
             var buildXElement = buildXmlDocument.Element("build");
             var idValue = buildXElement.Attribute("id").Value;
             var statusValue = buildXElement.Attribute("status").Value;
             var startDateText = buildXElement.Element("startDate").Value;
             var statusText = buildXElement.Element("statusText").Value;
-            var webUrl = buildXElement.Attribute("webUrl").Value;
+            var webUrl = buildXElement.Attribute("webUrl").Value + LogAsGuestUrlParameter;
             var revisionsElements = buildXElement.XPathSelectElements("revisions/revision");
             var commitHashList = revisionsElements.Select(x => x.Attribute("version").Value).ToArray();
             var runningAttribute = buildXElement.Attribute("running");

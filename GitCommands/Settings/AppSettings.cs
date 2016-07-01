@@ -35,6 +35,9 @@ namespace GitCommands
         private static RepoDistSettings _SettingsContainer;
         public static RepoDistSettings SettingsContainer { get { return _SettingsContainer; } }
 
+        public static int BranchDropDownMinWidth = 300;
+        public static int BranchDropDownMaxWidth = 600;
+
         static AppSettings()
         {
             ApplicationDataPath = new Lazy<string>(() =>
@@ -239,6 +242,12 @@ namespace GitCommands
         {
             get { return GetBool("showerrorswhenstagingfiles", true); }
             set { SetBool("showerrorswhenstagingfiles", value); }
+        }
+
+        public static bool AddNewlineToCommitMessageWhenMissing
+        {
+            get { return GetBool ("addnewlinetocommitmessagewhenmissing", true); }
+            set { SetBool ("addnewlinetocommitmessagewhenmissing", value); }
         }
 
         public static string LastCommitMessage
@@ -709,6 +718,12 @@ namespace GitCommands
             set { SetBool("showindicatorformultilinemessage", value); }
         }
 
+        public static bool ShowAnnotatedTagsMessages
+        {
+            get { return GetBool("showannotatedtagsmessages", true); }
+            set { SetBool("showannotatedtagsmessages", value); }
+        }
+
         public static bool ShowMergeCommits
         {
             get { return GetBool("showmergecommits", true); }
@@ -719,6 +734,12 @@ namespace GitCommands
         {
             get { return GetBool("showtags", true); }
             set { SetBool("showtags", value); }
+        }
+
+        public static bool ShowIds
+        {
+            get { return GetBool("showids", false); }
+            set { SetBool("showids", value); }
         }
 
         public static int RevisionGraphLayout
@@ -806,7 +827,13 @@ namespace GitCommands
             set { SetInt("maxrevisiongraphcommits", value); }
         }
 
-        public static string RecentWorkingDir
+        public static bool ShowDiffForAllParents
+        {
+            get { return GetBool("showdiffforallparents", true); }
+            set { SetBool("showdiffforallparents", value); }
+        }
+
+		public static string RecentWorkingDir
         {
             get { return GetString("RecentWorkingDir", null); }
             set { SetString("RecentWorkingDir", value); }
@@ -926,13 +953,13 @@ namespace GitCommands
 
         public static Font CommitFont
         {
-            get { return GetFont("commitfont", new Font(SystemFonts.MessageBoxFont.Name, SystemFonts.MessageBoxFont.Size)); }
+            get { return GetFont("commitfont", new Font(SystemFonts.DialogFont.Name, SystemFonts.MessageBoxFont.Size)); }
             set { SetFont("commitfont", value); }
         }
 
         public static Font Font
         {
-            get { return GetFont("font", new Font(SystemFonts.MessageBoxFont.Name, SystemFonts.MessageBoxFont.Size)); }
+            get { return GetFont("font", new Font(SystemFonts.DialogFont.Name, SystemFonts.DefaultFont.Size)); }
             set { SetFont("font", value); }
         }
 
@@ -968,6 +995,27 @@ namespace GitCommands
             set { SetString("lastformatpatchdir", value); }
         }
 
+        public static bool IgnoreWhitespaceChanges
+        {
+            get
+            {
+                return RememberIgnoreWhiteSpacePreference && GetBool("IgnoreWhitespaceChanges", false);
+            }
+            set
+            {
+                if (RememberIgnoreWhiteSpacePreference)
+                {
+                    SetBool("IgnoreWhitespaceChanges", value);
+                }
+            }
+        }
+
+        public static bool RememberIgnoreWhiteSpacePreference
+        {
+            get { return GetBool("rememberIgnoreWhiteSpacePreference", false); }
+            set { SetBool("rememberIgnoreWhiteSpacePreference", value); }
+        }
+
         public static string GetDictionaryDir()
         {
             return Path.Combine(GetResourceDir(), "Dictionaries");
@@ -997,6 +1045,7 @@ namespace GitCommands
             addEncoding(new UnicodeEncoding());
             addEncoding(new UTF7Encoding());
             addEncoding(new UTF8Encoding(false));
+            addEncoding(System.Text.Encoding.GetEncoding("CP852"));
 
             try
             {
@@ -1114,6 +1163,18 @@ namespace GitCommands
             set { SetBool("UseFormCommitMessage", value); }
         }
 
+        public static bool CommitAutomaticallyAfterCherryPick
+        {
+            get { return GetBool("CommitAutomaticallyAfterCherryPick", false); }
+            set { SetBool("CommitAutomaticallyAfterCherryPick", value); }
+        }
+
+        public static bool AddCommitReferenceToCherryPick
+        {
+            get { return GetBool("AddCommitReferenceToCherryPick", false); }
+            set { SetBool("AddCommitReferenceToCherryPick", value); }
+        }
+
         public static DateTime LastUpdateCheck
         {
             get { return GetDate("LastUpdateCheck", default(DateTime)); }
@@ -1124,6 +1185,18 @@ namespace GitCommands
         {
             get { return GetBool("CheckForReleaseCandidates", false); }
             set { SetBool("CheckForReleaseCandidates", value); }
+        }
+
+        public static bool OmitUninterestingDiff
+        {
+            get { return GetBool("OmitUninterestingDiff", false); }
+            set { SetBool("OmitUninterestingDiff", value); }
+        }
+
+        public static bool UseConsoleEmulatorForCommands
+        {
+            get { return GetBool("UseConsoleEmulatorForCommands", true); }
+            set { SetBool("UseConsoleEmulatorForCommands", value); }
         }
 
         public static string GetGitExtensionsFullPath()

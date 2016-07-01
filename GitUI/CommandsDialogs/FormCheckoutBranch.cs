@@ -6,9 +6,13 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
 using ResourceManager;
+using System.Drawing;
+using GitUI.Script;
+using GitCommands.Utils;
 
 namespace GitUI.CommandsDialogs
 {
+
     public partial class FormCheckoutBranch : GitModuleForm
     {
         #region Translation
@@ -96,10 +100,52 @@ namespace GitUI.CommandsDialogs
 
                 localChangesGB.Visible = IsThereUncommittedChanges();
                 ChangesMode = AppSettings.CheckoutBranchAction;
+
+                FinishFormLayout();
             }
             finally
             {
                 _isLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// This functions applies docking properties of controls in a way
+        /// that is compatible with both Windows and Linux:
+        /// 
+        /// 1. Remember container size.
+        /// 2. Turn AutoSize off.
+        /// 3. Apply docking properties of child controls.
+        /// 
+        /// This helps to avoid containers size issues on Linux.
+        /// </summary>
+        private void FinishFormLayout()
+        {
+            System.Drawing.Size size = this.Size;
+            this.AutoSize = false;
+            this.Size = size;
+
+            tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
+
+            size = this.tableLayoutPanel1.Size;
+            tableLayoutPanel1.AutoSize = false;
+            tableLayoutPanel1.Size = size;
+
+            size = this.setBranchPanel.Size;
+            setBranchPanel.AutoSize = false;
+            setBranchPanel.Size = size;
+
+            setBranchPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            Branches.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+
+            horLine.Dock = System.Windows.Forms.DockStyle.Fill;
+            remoteOptionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            localChangesPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+
+            if (!EnvUtils.RunningOnWindows())
+            {
+                this.Height = tableLayoutPanel1.GetRowHeights().Sum();
+                this.Height -= tableLayoutPanel1.GetRowHeights().Last();
             }
         }
 
@@ -212,7 +258,11 @@ namespace GitUI.CommandsDialogs
             }
 
             LocalChangesAction changes = ChangesMode;
-            AppSettings.CheckoutBranchAction = changes;
+            if (changes != LocalChangesAction.Reset &&
+                chkSetLocalChangesActionAsDefault.Checked)
+            {
+                AppSettings.CheckoutBranchAction = changes;
+            }
 
             if ((Visible || AppSettings.UseDefaultCheckoutBranchAction) && IsThereUncommittedChanges())
                 cmd.LocalChanges = changes;
@@ -230,6 +280,8 @@ namespace GitUI.CommandsDialogs
                 if (stash)
                     UICommands.StashSave(owner, AppSettings.IncludeUntrackedFilesInAutoStash);
             }
+
+            ScriptManager.RunEventScripts(this, ScriptEvent.BeforeCheckout);
 
             if (UICommands.StartCommandLineProcessDialog(cmd, owner))
             {
@@ -261,6 +313,8 @@ namespace GitUI.CommandsDialogs
 
                 UICommands.UpdateSubmodules(this);
 
+                ScriptManager.RunEventScripts(this, ScriptEvent.AfterCheckout);
+
                 return DialogResult.OK;
             }
 
@@ -270,7 +324,13 @@ namespace GitUI.CommandsDialogs
         private void BranchTypeChanged()
         {
             if (!_isLoading)
+            {
                 Initialize();
+                if (LocalBranch.Checked)
+                    this.Height -= tableLayoutPanel1.GetRowHeights().Last();
+                else
+                    this.Height += remoteOptionsPanel.Height;
+            }
         }
 
         private void LocalBranchCheckedChanged(object sender, EventArgs e)
@@ -363,7 +423,7 @@ namespace GitUI.CommandsDialogs
                         .Where(a => !GitModule.IsDetachedHead(a) &&
                                     !a.EndsWith("/HEAD"));
                 result.UnionWith(branches);
-                
+
             }
             for (int index = 1; index < _containRevisons.Length; index++)
             {
@@ -381,6 +441,15 @@ namespace GitUI.CommandsDialogs
         private void FormCheckoutBranch_Activated(object sender, EventArgs e)
         {
             Branches.Focus();
+        }
+
+        private void rbReset_CheckedChanged(object sender, EventArgs e)
+        {
+            chkSetLocalChangesActionAsDefault.Enabled = !rbReset.Checked;
+            if (rbReset.Checked)
+            {
+                chkSetLocalChangesActionAsDefault.Checked = false;
+            }
         }
     }
 }
