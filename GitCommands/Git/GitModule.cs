@@ -40,6 +40,13 @@ namespace GitCommands
         SameTime
     }
 
+    public enum ForcePushOptions
+    {
+        DoNotForce,
+        Force,
+        ForceWithLease,
+    }
+
     public struct ConflictedFileData
     {
         public ConflictedFileData(string hash, string filename)
@@ -77,7 +84,10 @@ namespace GitCommands
     public sealed class GitModule : IGitModule
     {
         private static readonly Regex DefaultHeadPattern = new Regex("refs/remotes/[^/]+/HEAD", RegexOptions.Compiled);
+        private static readonly Regex CpEncodingPattern = new Regex("cp\\d+", RegexOptions.Compiled);
         private readonly object _lock = new object();
+
+        public const string NoNewLineAtTheEnd = "\\ No newline at end of file";
 
         public GitModule(string workingdir)
         {
@@ -195,6 +205,11 @@ namespace GitCommands
 
                 return _effectiveSettings;
             }
+        }
+
+        public ISettingsSource GetEffectiveSettings()
+        {
+            return EffectiveSettings;
         }
 
         private RepoDistSettings _distributedSettings;
@@ -386,7 +401,7 @@ namespace GitCommands
                 {
                     if (line.StartsWith("gitdir:"))
                     {
-                        string path = line.Substring(7).Trim().Replace('/', '\\');
+                        string path = line.Substring(7).Trim().ToNativePath();
                         if (Path.IsPathRooted(path))
                             return path.EnsureTrailingPathSeparator();
                         else
@@ -766,7 +781,7 @@ namespace GitCommands
             using (var ms = (MemoryStream)GetFileStream(blob)) //Ugly, has implementation info.
             {
                 byte[] buf = ms.ToArray();
-                if (EffectiveConfigFile.core.autocrlf.Value == AutoCRLFType.True)
+                if (EffectiveConfigFile.core.autocrlf.Value == AutoCRLFType.@true)
                 {
                     if (!FileHelper.IsBinaryFile(this, saveAs) && !FileHelper.IsBinaryFileAccordingToContent(buf))
                     {
@@ -1018,6 +1033,12 @@ namespace GitCommands
             }
             else
             {
+                string shellPath;
+                if (TryFindShellPath("git-bash.exe", out shellPath))
+                {
+                    return RunExternalCmdDetachedShowConsole(shellPath, string.Empty);
+                }
+
                 string args;
                 if (string.IsNullOrWhiteSpace(bashCommand))
                 {
@@ -1027,11 +1048,37 @@ namespace GitCommands
                 {
                     args = "--login -i -c \"" + bashCommand.Replace("\"", "\\\"") + "\"";
                 }
+                args = "/c \"\"{0}\" " + args;
 
-                string termCmd = File.Exists(AppSettings.GitBinDir + "bash.exe") ? "bash" : "sh";
-                return RunExternalCmdDetachedShowConsole("cmd.exe",
-                    string.Format("/c \"\"{0}{1}\" {2}", AppSettings.GitBinDir, termCmd, args));
+                if (TryFindShellPath("bash.exe", out shellPath))
+                {
+                    return RunExternalCmdDetachedShowConsole("cmd.exe", string.Format(args, shellPath));
+                }
+
+                if (TryFindShellPath("sh.exe", out shellPath))
+                {
+                    return RunExternalCmdDetachedShowConsole("cmd.exe", string.Format(args, shellPath));
+                }
+
+                return RunExternalCmdDetachedShowConsole("cmd.exe", @"/K echo git bash command not found! :( Please add a folder containing 'bash.exe' to your PATH...");
             }
+        }
+
+        private bool TryFindShellPath(string shell, out string shellPath)
+        {
+            shellPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Git", shell);
+            if (PathUtil.PathExists(shellPath))
+                return true;
+
+            shellPath = Path.Combine(AppSettings.GitBinDir, shell);
+            if (PathUtil.PathExists(shellPath))
+                return true;
+
+            if (PathUtil.TryFindFullPath(shell, out shellPath))
+                return true;
+
+            shellPath = null;
+            return false;
         }
 
         public string Init(bool bare, bool shared)
@@ -1450,7 +1497,15 @@ namespace GitCommands
 
         public static void StartPageantWithKey(string sshKeyFile)
         {
-            RunExternalCmdDetached(AppSettings.Pageant, "\"" + sshKeyFile + "\"", "");
+            //ensure pageant is loaded, so we can wait for loading a key in the next command
+            //otherwise we'll stuck there waiting until pageant exits
+            var pageantProcName = Path.GetFileNameWithoutExtension(AppSettings.Pageant);
+            if (Process.GetProcessesByName(pageantProcName).Length == 0)
+            {
+                Process pageantProcess = RunExternalCmdDetached(AppSettings.Pageant, "", "");
+                pageantProcess.WaitForInputIdle();
+            }
+            GitCommandHelpers.RunCmd(AppSettings.Pageant, "\"" + sshKeyFile + "\"");
         }
 
         public string GetPuttyKeyFileForRemote(string remote)
@@ -1552,13 +1607,11 @@ namespace GitCommands
         /// <param name="track">For every branch that is up to date or successfully pushed, add upstream (tracking) reference.</param>
         /// <param name="recursiveSubmodules">If '1', check whether all submodule commits used by the revisions to be pushed are available on a remote tracking branch; otherwise, the push will be aborted.</param>
         /// <returns>'git push' command with the specified parameters.</returns>
-        public string PushAllCmd(string remote, bool force, bool track, int recursiveSubmodules)
+        public string PushAllCmd(string remote, ForcePushOptions force, bool track, int recursiveSubmodules)
         {
             remote = remote.ToPosixPath();
 
-            var sforce = "";
-            if (force)
-                sforce = "-f ";
+            var sforce = GitCommandHelpers.GetForcePushArgument(force);
 
             var strack = "";
             if (track)
@@ -1588,7 +1641,7 @@ namespace GitCommands
         /// <param name="recursiveSubmodules">If '1', check whether all submodule commits used by the revisions to be pushed are available on a remote tracking branch; otherwise, the push will be aborted.</param>
         /// <returns>'git push' command with the specified parameters.</returns>
         public string PushCmd(string remote, string fromBranch, string toBranch,
-            bool force, bool track, int recursiveSubmodules)
+            ForcePushOptions force, bool track, int recursiveSubmodules)
         {
             remote = remote.ToPosixPath();
 
@@ -1602,9 +1655,7 @@ namespace GitCommands
 
             if (toBranch != null) toBranch = toBranch.Replace(" ", "");
 
-            var sforce = "";
-            if (force)
-                sforce = "-f ";
+            var sforce = GitCommandHelpers.GetForcePushArgument(force);
 
             var strack = "";
             if (track)
@@ -3126,6 +3177,8 @@ namespace GitCommands
                         encoding = Encoding.UTF8;
                     else if (toEncodingName.Equals(LosslessEncoding.HeaderName, StringComparison.InvariantCultureIgnoreCase))
                         encoding = null; //no recoding is needed
+                    else if (CpEncodingPattern.IsMatch(toEncodingName)) // Encodings written as e.g. "cp1251", which is not a supported encoding string
+                        encoding = Encoding.GetEncoding(int.Parse(toEncodingName.Substring(2)));
                     else
                         encoding = Encoding.GetEncoding(toEncodingName);
                 }
@@ -3135,7 +3188,7 @@ namespace GitCommands
             }
             catch (Exception)
             {
-                return "! Unsupported commit message encoding: " + toEncodingName + " !\n\n" + s;
+                return s + "\n\n! Unsupported commit message encoding: " + toEncodingName + " !";
             }
             return ReEncodeStringFromLossless(s, encoding);
         }
