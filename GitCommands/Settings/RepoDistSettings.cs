@@ -5,7 +5,7 @@ namespace GitCommands.Settings
 {
     /// <summary>
     /// Settings that can be distributed with repository
-    /// they can be overriden for a particular repository
+    /// they can be overridden for a particular repository
     /// </summary>
     public class RepoDistSettings : SettingsContainer<RepoDistSettings, GitExtSettingsCache>
     {
@@ -130,7 +130,7 @@ namespace GitCommands.Settings
         {
             get
             {
-                return new SettingsPath(this, Type.Value);
+                return new SettingsPath(this, Type.ValueOrDefault);
             }
         }
     }
@@ -138,12 +138,21 @@ namespace GitCommands.Settings
     public class DetailedGroup : SettingsPath
     {
         public readonly BoolNullableSetting ShowConEmuTab;
+        public readonly StringSetting ConEmuStyle;
+        public readonly StringSetting ConEmuTerminal;
+        public readonly BoolNullableSetting GetRemoteBranchesDirectlyFromRemote;
+        public readonly StringSetting ConEmuFontSize;
 
         public DetailedGroup(RepoDistSettings container)
             : base(container, "Detailed")
         {
             ShowConEmuTab = new BoolNullableSetting("ShowConEmuTab", this, true);
+            ConEmuStyle = new StringSetting("ConEmuStyle", this, "<Solarized Light>");
+            ConEmuTerminal = new StringSetting("ConEmuTerminal", this, "bash");
+            ConEmuFontSize = new StringSetting("ConEmuFontSize", this, "12");
+            GetRemoteBranchesDirectlyFromRemote = new BoolNullableSetting("GetRemoteBranchesDirectlyFromRemote", this, false);
         }
+
     }
 
 }

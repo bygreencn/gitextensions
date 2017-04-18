@@ -742,6 +742,16 @@ namespace GitUI.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap Icon_86 {
+            get {
+                object obj = ResourceManager.GetObject("Icon_86", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap IconAddToGitIgnore {
             get {
                 object obj = ResourceManager.GetObject("IconAddToGitIgnore", resourceCulture);
@@ -765,6 +775,16 @@ namespace GitUI.Properties {
         internal static System.Drawing.Bitmap IconBlame {
             get {
                 object obj = ResourceManager.GetObject("IconBlame", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap IconBlank {
+            get {
+                object obj = ResourceManager.GetObject("IconBlank", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -1744,6 +1764,26 @@ namespace GitUI.Properties {
         internal static System.Drawing.Bitmap success {
             get {
                 object obj = ResourceManager.GetObject("success", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap light_bulb_icon_off_16 {
+            get {
+                object obj = ResourceManager.GetObject("light_bulb_icon_off_16", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap light_bulb_icon_on_16 {
+            get {
+                object obj = ResourceManager.GetObject("light_bulb_icon_on_16", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

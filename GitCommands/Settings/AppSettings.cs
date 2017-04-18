@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -10,6 +12,7 @@ using GitCommands.Logging;
 using GitCommands.Repository;
 using GitCommands.Settings;
 using Microsoft.Win32;
+using System.Linq;
 
 namespace GitCommands
 {
@@ -27,16 +30,16 @@ namespace GitCommands
         public static readonly char PosixPathSeparator = '/';
         public static Version AppVersion { get { return Assembly.GetCallingAssembly().GetName().Version; } }
         public static string ProductVersion { get { return Application.ProductVersion; } }
-        public const string SettingsFileName = "GitExtensions.settings";
+        public static readonly string SettingsFileName = "GitExtensions.settings";
 
-        public static Lazy<string> ApplicationDataPath;
+        public static readonly Lazy<string> ApplicationDataPath;
         public static string SettingsFilePath { get { return Path.Combine(ApplicationDataPath.Value, SettingsFileName); } }
 
         private static RepoDistSettings _SettingsContainer;
         public static RepoDistSettings SettingsContainer { get { return _SettingsContainer; } }
 
-        public static int BranchDropDownMinWidth = 300;
-        public static int BranchDropDownMaxWidth = 600;
+        public static readonly int BranchDropDownMinWidth = 300;
+        public static readonly int BranchDropDownMaxWidth = 600;
 
         static AppSettings()
         {
@@ -86,6 +89,12 @@ namespace GitCommands
                 }
                 SetString("AutoNormaliseSymbol", value);
             }
+        }
+
+        public static bool RememberAmendCommitState
+        {
+            get { return GetBool("RememberAmendCommitState", true); }
+            set { SetBool("RememberAmendCommitState", value); }
         }
 
         public static void UsingContainer(RepoDistSettings aSettingsContainer, Action action)
@@ -370,7 +379,7 @@ namespace GitCommands
 
         public static string GravatarCachePath
         {
-            get { return ApplicationDataPath.Value + "Images\\"; }
+            get { return Path.Combine(ApplicationDataPath.Value, "Images\\"); }
         }
 
         public static string Translation
@@ -389,24 +398,25 @@ namespace GitCommands
 
         private static readonly Dictionary<string, string> _languageCodes =
             new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
-        {
-            { "English", "en" },
-            { "Czech", "cs" },
-            { "French", "fr" },
-            { "German", "de" },
-            { "Indonesian", "id" },
-            { "Italian", "it" },
-            { "Japanese", "ja" },
-            { "Korean", "ko" },
-            { "Polish", "pl" },
-            { "Russian", "ru" },
-            { "Portuguese (Brazil)", "pt_BR" },
-            { "Portuguese (Portugal)", "pt_PT" },
-            { "Romanian", "ro" },
-            { "Simplified Chinese", "zh_CN" },
-            { "Spanish", "es" },
-            { "Traditional Chinese", "zh_TW" }
-        };
+            {
+                {"Czech", "cs"},
+                {"Dutch", "nl"},
+                {"English", "en"},
+                {"French", "fr"},
+                {"German", "de"},
+                {"Indonesian", "id"},
+                {"Italian", "it"},
+                {"Japanese", "ja"},
+                {"Korean", "ko"},
+                {"Polish", "pl"},
+                {"Portuguese (Brazil)", "pt-BR"},
+                {"Portuguese (Portugal)", "pt-PT"},
+                {"Romanian", "ro"},
+                {"Russian", "ru"},
+                {"Simplified Chinese", "zh-CN"},
+                {"Spanish", "es"},
+                {"Traditional Chinese", "zh-TW"}
+            };
 
         public static string CurrentLanguageCode
         {
@@ -421,7 +431,19 @@ namespace GitCommands
 
         public static CultureInfo CurrentCultureInfo
         {
-            get { return CultureInfo.GetCultureInfo(CurrentLanguageCode); }
+            get
+            {
+                try
+                {
+                    return CultureInfo.GetCultureInfo(CurrentLanguageCode);
+
+                }
+                catch (System.Globalization.CultureNotFoundException)
+                {
+                    Debug.WriteLine("Culture {0} not found", CurrentLanguageCode);
+                    return CultureInfo.GetCultureInfo("en");
+                }
+            }
         }
 
         public static bool UserProfileHomeDir
@@ -532,6 +554,12 @@ namespace GitCommands
             set { SetBool("LoadBlameOnShow", value); }
         }
 
+        public static bool OpenSubmoduleDiffInSeparateWindow
+        {
+            get { return GetBool("opensubmodulediffinseparatewindow", false); }
+            set { SetBool("opensubmodulediffinseparatewindow", value); }
+        }
+
         public static bool RevisionGraphShowWorkingDirChanges
         {
             get { return GetBool("revisiongraphshowworkingdirchanges", false); }
@@ -598,6 +626,12 @@ namespace GitCommands
             set { SetBool("autostash", value); }
         }
 
+        public static bool RebaseAutoStash
+        {
+            get { return GetBool("RebaseAutostash", false); }
+            set { SetBool("RebaseAutostash", value); }
+        }
+
         public static LocalChangesAction CheckoutBranchAction
         {
             get { return GetEnum("checkoutbranchaction", LocalChangesAction.DontChange); }
@@ -628,6 +662,12 @@ namespace GitCommands
             set { SetBool("DontConfirmAmend", value); }
         }
 
+        public static bool DontConfirmCommitIfNoBranch
+        {
+            get { return GetBool("DontConfirmCommitIfNoBranch", false); }
+            set { SetBool("DontConfirmCommitIfNoBranch", value); }
+        }
+
         public static bool? AutoPopStashAfterPull
         {
             get { return GetBool("AutoPopStashAfterPull"); }
@@ -656,6 +696,24 @@ namespace GitCommands
         {
             get { return GetBool("DontConfirmAddTrackingRef", false); }
             set { SetBool("DontConfirmAddTrackingRef", value); }
+        }
+
+        public static bool DontConfirmCommitAfterConflictsResolved
+        {
+            get { return GetBool("DontConfirmCommitAfterConflictsResolved", false); }
+            set { SetBool("DontConfirmCommitAfterConflictsResolved", value); }
+        }
+
+        public static bool DontConfirmSecondAbortConfirmation
+        {
+            get { return GetBool("DontConfirmSecondAbortConfirmation", false); }
+            set { SetBool("DontConfirmSecondAbortConfirmation", value); }
+        }
+
+        public static bool DontConfirmResolveConflicts
+        {
+            get { return GetBool("DontConfirmResolveConflicts", false); }
+            set { SetBool("DontConfirmResolveConflicts", value); }
         }
 
         public static bool IncludeUntrackedFilesInAutoStash
@@ -814,6 +872,12 @@ namespace GitCommands
             set { SetBool("showfirstparent", value); }
         }
 
+        public static int CommitDialogDeviceDpi
+        {
+            get { return GetInt("commitdialogdevicedpi", 96); }
+            set { SetInt("commitdialogdevicedpi", value); }
+        }
+
         public static int CommitDialogSplitter
         {
             get { return GetInt("commitdialogsplitter", -1); }
@@ -824,6 +888,12 @@ namespace GitCommands
         {
             get { return GetInt("commitdialogrightsplitter", -1); }
             set { SetInt("commitdialogrightsplitter", value); }
+        }
+
+        public static bool CommitDialogSelectionFilter
+        {
+            get { return GetBool("commitdialogselectionfilter", false); }
+            set { SetBool("commitdialogselectionfilter", value); }
         }
 
         public static string DefaultCloneDestinationPath
@@ -891,20 +961,20 @@ namespace GitCommands
 
         public static string Plink
         {
-            get { return GetString("plink", ReadStringRegValue("plink", "")); }
-            set { SetString("plink", value); }
+            get { return GetString("plink", Environment.GetEnvironmentVariable("GITEXT_PLINK") ?? ReadStringRegValue("plink", "")); }
+            set { if (value != Environment.GetEnvironmentVariable("GITEXT_PLINK")) SetString("plink", value); }
         }
         public static string Puttygen
         {
-            get { return GetString("puttygen", ReadStringRegValue("puttygen", "")); }
-            set { SetString("puttygen", value); }
+            get { return GetString("puttygen", Environment.GetEnvironmentVariable("GITEXT_PUTTYGEN") ?? ReadStringRegValue("puttygen", "")); }
+            set { if (value != Environment.GetEnvironmentVariable("GITEXT_PUTTYGEN")) SetString("puttygen", value); }
         }
 
         /// <summary>Gets the path to Pageant (SSH auth agent).</summary>
         public static string Pageant
         {
-            get { return GetString("pageant", ReadStringRegValue("pageant", "")); }
-            set { SetString("pageant", value); }
+            get { return GetString("pageant", Environment.GetEnvironmentVariable("GITEXT_PAGEANT") ?? ReadStringRegValue("pageant", "")); }
+            set { if (value != Environment.GetEnvironmentVariable("GITEXT_PAGEANT")) SetString("pageant", value); }
         }
 
         public static bool AutoStartPageant
@@ -1054,8 +1124,72 @@ namespace GitCommands
 
         public static bool RememberIgnoreWhiteSpacePreference
         {
-            get { return GetBool("rememberIgnoreWhiteSpacePreference", false); }
+            get { return GetBool("rememberIgnoreWhiteSpacePreference", true); }
             set { SetBool("rememberIgnoreWhiteSpacePreference", value); }
+        }
+
+        public static bool ShowNonPrintingChars
+        {
+            get
+            {
+                return RememberShowNonPrintingCharsPreference && GetBool("ShowNonPrintingChars", false);
+            }
+            set
+            {
+                if (RememberShowNonPrintingCharsPreference)
+                {
+                    SetBool("ShowNonPrintingChars", value);
+                }
+            }
+        }
+
+        public static bool RememberShowNonPrintingCharsPreference
+        {
+            get { return GetBool("RememberShowNonPrintableCharsPreference", false); }
+            set { SetBool("RememberShowNonPrintableCharsPreference", value); }
+        }
+
+        public static bool ShowEntireFile
+        {
+            get
+            {
+                return RememberShowEntireFilePreference && GetBool("ShowEntireFile", false);
+            }
+            set
+            {
+                if (RememberShowEntireFilePreference)
+                {
+                    SetBool("ShowEntireFile", value);
+                }
+            }
+        }
+
+        public static bool RememberShowEntireFilePreference
+        {
+            get { return GetBool("RememberShowEntireFilePreference", false); }
+            set { SetBool("RememberShowEntireFilePreference", value); }
+        }
+
+        public static int NumberOfContextLines
+        {
+            get
+            {
+                const int defaultValue = 3;
+                return RememberNumberOfContextLines ? GetInt("NumberOfContextLines", defaultValue) : defaultValue;
+            }
+            set
+            {
+                if (RememberNumberOfContextLines)
+                {
+                    SetInt("NumberOfContextLines", value);
+                }
+            }
+        }
+
+        public static bool RememberNumberOfContextLines
+        {
+            get { return GetBool("RememberNumberOfContextLines", false); }
+            set { SetBool("RememberNumberOfContextLines", value); }
         }
 
         public static string GetDictionaryDir()
@@ -1065,6 +1199,7 @@ namespace GitCommands
 
         public static void SaveSettings()
         {
+            SaveEncodings();
             try
             {
                 SettingsContainer.LockedAction(() =>
@@ -1081,13 +1216,7 @@ namespace GitCommands
 
         public static void LoadSettings()
         {
-            Action<Encoding> addEncoding = delegate(Encoding e) { AvailableEncodings[e.HeaderName] = e; };
-            addEncoding(Encoding.Default);
-            addEncoding(new ASCIIEncoding());
-            addEncoding(new UnicodeEncoding());
-            addEncoding(new UTF7Encoding());
-            addEncoding(new UTF8Encoding(false));
-            addEncoding(System.Text.Encoding.GetEncoding("CP852"));
+            LoadEncodings();
 
             try
             {
@@ -1391,6 +1520,47 @@ namespace GitCommands
         public static string GetString(string name, string defaultValue)
         {
             return SettingsContainer.GetString(name, defaultValue);
+        }
+
+        private static void LoadEncodings()
+        {
+            Action<Encoding> addEncoding = delegate (Encoding e) { AvailableEncodings[e.HeaderName] = e; };
+            Action<string> addEncodingByName = delegate (string s) { try { addEncoding(Encoding.GetEncoding(s)); } catch { } };
+
+            string availableEncodings = GetString("AvailableEncodings", "");
+            if (string.IsNullOrWhiteSpace(availableEncodings))
+            {
+                // Default encoding set
+                addEncoding(Encoding.Default);
+                addEncoding(new ASCIIEncoding());
+                addEncoding(new UnicodeEncoding());
+                addEncoding(new UTF7Encoding());
+                addEncoding(new UTF8Encoding(false));
+                addEncoding(Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage));
+            }
+            else
+            {
+                var utf8 = new UTF8Encoding(false);
+                foreach(var encodingName in availableEncodings.Split(';'))
+                {
+                    // create utf-8 without BOM
+                    if (encodingName == utf8.HeaderName)
+                        addEncoding(utf8);
+                    // default encoding
+                    else if (encodingName == "Default")
+                        addEncoding(Encoding.Default);
+                    // add encoding by name
+                    else
+                        addEncodingByName(encodingName);
+                }
+            }
+        }
+
+        private static void SaveEncodings()
+        {
+            string availableEncodings = AvailableEncodings.Values.Select(e => e.HeaderName).Join(";");
+            availableEncodings = availableEncodings.Replace(Encoding.Default.HeaderName, "Default");
+            SetString("AvailableEncodings", availableEncodings);
         }
 
     }

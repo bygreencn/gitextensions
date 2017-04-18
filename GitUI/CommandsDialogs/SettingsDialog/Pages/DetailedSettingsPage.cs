@@ -1,17 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using GitUIPluginInterfaces;
-using GitCommands.Settings;
+﻿using GitCommands.Settings;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
-    public partial class DetailedSettingsPage : AutoLayoutSettingsPage
+    public partial class DetailedSettingsPage : RepoDistSettingsPage
     {
         public DetailedSettingsPage()
         {
@@ -23,28 +14,34 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         protected override void Init(ISettingsPageHost aPageHost)
         {
             base.Init(aPageHost);
-            CreateSettingsControls();
-            Translate();
+            BindSettingsWithControls();
         }
 
         private DetailedGroup DetailedSettings
         {
             get
             {
-                return RepoDistSettingsSet.RepoDistSettings.Detailed;
+                return CurrentSettings.Detailed;
             }
         }
 
-        private void CreateSettingsControls()
+        private void BindSettingsWithControls()
         {
-            GroupBoxSettingsLayout main = new GroupBoxSettingsLayout(this, "Browse repository window");
-            AddSettingsLayout(main);
-            main.AddBoolSetting("Show the Console tab", DetailedSettings.ShowConEmuTab);
+            AddSettingBinding(DetailedSettings.ShowConEmuTab, chkChowConsoleTab);
+            AddSettingBinding(DetailedSettings.ConEmuStyle, cboStyle);
+            AddSettingBinding(DetailedSettings.ConEmuTerminal, cboTerminal);
+            AddSettingBinding(DetailedSettings.ConEmuFontSize, cboFontSize);
+            AddSettingBinding(DetailedSettings.GetRemoteBranchesDirectlyFromRemote, chkRemotesFromServer);
         }
 
         public static SettingsPageReference GetPageReference()
         {
             return new SettingsPageReferenceByType(typeof(DetailedSettingsPage));
+        }
+
+        private void chkChowConsoleTab_CheckedChanged(object sender, System.EventArgs e)
+        {
+            groupBoxConsoleSettings.Enabled = chkChowConsoleTab.Checked;
         }
     }
 }

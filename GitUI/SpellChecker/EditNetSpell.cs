@@ -38,7 +38,7 @@ namespace GitUI.SpellChecker
         private Spelling _spelling;
         private static WordDictionary _wordDictionary;
 
-        private readonly CancellationTokenSource _autoCompleteCancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _autoCompleteCancellationTokenSource = new CancellationTokenSource();
         private readonly List<IAutoCompleteProvider> _autoCompleteProviders = new List<IAutoCompleteProvider>();
         private Task<IEnumerable<AutoCompleteWord>> _autoCompleteListTask;
         private bool _autoCompleteWasUserActivated;
@@ -617,7 +617,6 @@ namespace GitUI.SpellChecker
 
         private void TextBoxLeave(object sender, EventArgs e)
         {
-            ShowWatermark();
             if (ActiveControl != AutoComplete)
                 CloseAutoComplete();
         }
@@ -666,26 +665,19 @@ namespace GitUI.SpellChecker
                 return;
             }
 
-            if (e.Control && e.KeyCode == Keys.V)
+            // handle paste from clipboard (Ctrl+V, Shift+Ins)
+            if((e.Control && e.KeyCode == Keys.V) || (e.Shift && e.KeyCode == Keys.Insert))
             {
-                if (!Clipboard.ContainsText())
-                {
-                    e.Handled = true;
-                    return;
-                }
-                // remove image data from clipboard
-                var text = Clipboard.GetText();
-                // Clipboard.SetText throws exception when text is null or empty. See https://msdn.microsoft.com/en-us/library/ydby206k.aspx
-                if (!string.IsNullOrEmpty(text))
-                {
-                    Clipboard.SetText(text);
-                }
+                PasteTextFromClipboard();
+                e.Handled = true;
+                return;
             }
-            else if (e.Control && !e.Alt && e.KeyCode == Keys.Z)
+
+            if (e.Control && !e.Alt && e.KeyCode == Keys.Z)
             {
                 UndoHighlighting();
             }
-            else if (e.Control && !e.Alt && e.KeyCode == Keys.Space)
+            else if (e.Control && !e.Alt && e.KeyCode == Keys.Space && AppSettings.ProvideAutocompletion)
             {
                 UpdateOrShowAutoComplete(true);
                 e.Handled = true;
@@ -694,6 +686,12 @@ namespace GitUI.SpellChecker
             }
 
             OnKeyDown(e);
+        }
+
+        private void PasteTextFromClipboard()
+        {
+            // insert only text
+            TextBox.Paste(DataFormats.GetFormat(DataFormats.UnicodeText));
         }
 
         private void TextBox_KeyPress(object sender, KeyPressEventArgs e)
@@ -707,11 +705,6 @@ namespace GitUI.SpellChecker
 
             if (SelectionChanged != null)
                 SelectionChanged(sender, e);
-        }
-
-        private void TextBox_Enter(object sender, EventArgs e)
-        {
-            HideWatermark();
         }
 
         private void ShowWatermark()
@@ -736,10 +729,14 @@ namespace GitUI.SpellChecker
             }
         }
 
-        public new bool Focus()
+         private void TextBox_LostFocus(object sender, EventArgs e)
+        {
+            ShowWatermark();
+        }
+
+        private void TextBox_GotFocus(object sender, EventArgs e)
         {
             HideWatermark();
-            return base.Focus();
         }
 
         private void CutMenuItemClick(object sender, EventArgs e)
@@ -756,11 +753,7 @@ namespace GitUI.SpellChecker
         private void PasteMenuItemClick(object sender, EventArgs e)
         {
             if (!Clipboard.ContainsText()) return;
-            // remove image data from clipboard
-            string text = Clipboard.GetText();
-            Clipboard.SetText(text);
-
-            TextBox.Paste();
+            PasteTextFromClipboard();
             CheckSpelling();
         }
 
@@ -814,8 +807,16 @@ namespace GitUI.SpellChecker
             }
         }
 
+        public void RefreshAutoCompleteWords()
+        {
+            if (AppSettings.ProvideAutocompletion)
+                InitializeAutoCompleteWordsTask();
+        }
+
         private void InitializeAutoCompleteWordsTask ()
         {
+            CancelAutoComplete();
+            _autoCompleteCancellationTokenSource = new CancellationTokenSource();
             _autoCompleteListTask = new Task<IEnumerable<AutoCompleteWord>>(
                     () =>
                     {
@@ -846,7 +847,7 @@ namespace GitUI.SpellChecker
                             t.Dispose();
                             return res;
                         }).Distinct().ToList();
-                    });
+                    }, _autoCompleteCancellationTokenSource.Token);
         }
 
         public void AddAutoCompleteProvider (IAutoCompleteProvider autoCompleteProvider)

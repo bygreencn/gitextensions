@@ -134,7 +134,7 @@ namespace GitUI.BuildServerIntegration
                                     credentialsConfig.LoadFromString(textReader.ReadToEnd());
                                 }
 
-                                ConfigSection section = credentialsConfig.FindConfigSection(CredentialsConfigName);
+                                var section = credentialsConfig.FindConfigSection(CredentialsConfigName);
 
                                 if (section != null)
                                 {
@@ -153,7 +153,7 @@ namespace GitUI.BuildServerIntegration
                         catch (CryptographicException)
                         {
                             // As per MSDN, the ProtectedData.Unprotect method is per user,
-                            // it will throw the CryptographicException if the current user 
+                            // it will throw the CryptographicException if the current user
                             // is not the one who protected the data.
 
                             // Set this variable to false so the user can reset the credentials.
@@ -170,7 +170,7 @@ namespace GitUI.BuildServerIntegration
                     {
                         ConfigFile credentialsConfig = new ConfigFile("", true);
 
-                        ConfigSection section = credentialsConfig.FindOrCreateConfigSection(CredentialsConfigName);
+                        var section = credentialsConfig.FindOrCreateConfigSection(CredentialsConfigName);
 
                         section.SetValueAsBool(UseGuestAccessKey, buildServerCredentials.UseGuestAccess);
                         section.SetValue(UsernameKey, buildServerCredentials.Username);
@@ -227,6 +227,7 @@ namespace GitUI.BuildServerIntegration
                                                      AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
                                                      Width = 16,
                                                      ReadOnly = true,
+                                                     Resizable = DataGridViewTriState.False,
                                                      SortMode = DataGridViewColumnSortMode.NotSortable
                                                  };
                 BuildStatusImageColumnIndex = revisions.Columns.Add(buildStatusImageColumn);
@@ -238,6 +239,7 @@ namespace GitUI.BuildServerIntegration
                                                 {
                                                     AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
                                                     ReadOnly = true,
+                                                    FillWeight = 50,
                                                     SortMode = DataGridViewColumnSortMode.NotSortable
                                                 };
 
@@ -278,7 +280,7 @@ namespace GitUI.BuildServerIntegration
             {
                 if (!Module.EffectiveSettings.BuildServer.EnableIntegration.ValueOrDefault)
                     return null;
-                var buildServerType = Module.EffectiveSettings.BuildServer.Type.Value;
+                var buildServerType = Module.EffectiveSettings.BuildServer.Type.ValueOrDefault;
                 if (string.IsNullOrEmpty(buildServerType))
                     return null;
                 var exports = ManagedExtensibility.GetExports<IBuildServerAdapter, IBuildServerTypeMetadata>();
@@ -295,7 +297,7 @@ namespace GitUI.BuildServerIntegration
                             return null;
                         }
                         var buildServerAdapter = export.Value;
-                        buildServerAdapter.Initialize(this, Module.EffectiveSettings.BuildServer.TypeSettings);
+                        buildServerAdapter.Initialize(this, Module.EffectiveSettings.BuildServer.TypeSettings, sha1 => revisionGrid.GetRevision(sha1) != null);
                         return buildServerAdapter;
                     }
                     catch (InvalidOperationException ex)
